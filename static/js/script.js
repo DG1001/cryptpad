@@ -300,48 +300,109 @@ document.addEventListener('DOMContentLoaded', () => {
     if (copyButton && markdownTextArea) {
         copyButton.addEventListener('click', async () => {
             const currentKey = encryptionKeyInput.value;
-            if (!currentKey) {
-                alert("Please enter an encryption key to copy.");
-                return;
-            }
+            // Note: We don't alert for missing key here immediately, 
+            // as copying selected text without decryption is still an option.
 
-            const text = markdownTextArea.value;
-            const cursorPos = markdownTextArea.selectionStart;
-            let labelToCopy = null;
-            
-            const labelRegex = /\[LOCKED_CONTENT_#\d+\]/g;
-            let match;
+            const selectionStart = markdownTextArea.selectionStart;
+            const selectionEnd = markdownTextArea.selectionEnd;
+            const fullText = markdownTextArea.value;
 
-            // Find if cursor is inside a label
-            while ((match = labelRegex.exec(text)) !== null) {
-                if (cursorPos >= match.index && cursorPos <= match.index + match[0].length) {
-                    labelToCopy = match[0];
-                    break;
+            if (selectionStart !== selectionEnd) { // Text is selected
+                const selectedText = fullText.substring(selectionStart, selectionEnd);
+                let resultText = "";
+                let lastIndex = 0;
+                const labelRegex = /\[LOCKED_CONTENT_#\d+\]/g;
+                let match;
+                let decryptionOccurred = false;
+                let decryptionAttemptedWithKey = false;
+
+                // Iterate over selected text to find and decrypt labels
+                // Create a new regex for each iteration within the loop to avoid issues with 'g' flag and lastIndex
+                const localLabelRegex = /\[LOCKED_CONTENT_#\d+\]/g; 
+
+                while ((match = localLabelRegex.exec(selectedText)) !== null) {
+                    resultText += selectedText.substring(lastIndex, match.index); // Append text before label
+                    
+                    const labelPlaceholder = match[0];
+                    const encryptedDataString = encryptedTextMap[labelPlaceholder];
+                    let decryptedSegment = labelPlaceholder; // Default to label itself
+
+                    if (encryptedDataString) {
+                        if (currentKey) {
+                            decryptionAttemptedWithKey = true;
+                            const tempDecrypted = await decryptRawData(encryptedDataString, currentKey);
+                            if (tempDecrypted !== null) {
+                                decryptedSegment = tempDecrypted;
+                                decryptionOccurred = true;
+                            }
+                            // If tempDecrypted is null, decryption failed (bad key/corrupted), keep label
+                        }
+                        // If no currentKey, encryptedDataString exists but can't decrypt, keep label
+                    }
+                    // If no encryptedDataString for label, keep label (should not happen if map is correct)
+                    
+                    resultText += decryptedSegment;
+                    lastIndex = match.index + match[0].length;
                 }
-            }
+                resultText += selectedText.substring(lastIndex); // Append remaining text
 
-            if (labelToCopy) {
-                const encryptedDataString = encryptedTextMap[labelToCopy];
-                if (!encryptedDataString) {
-                    alert("Could not find encrypted data for this label.");
+                try {
+                    await navigator.clipboard.writeText(resultText);
+                    if (decryptionOccurred) {
+                        alert("Selected text (with decrypted content) copied to clipboard!");
+                    } else if (decryptionAttemptedWithKey) {
+                        alert("Selected text copied. Some parts could not be decrypted (check key or data).");
+                    } else if (selectedText.match(/\[LOCKED_CONTENT_#\d+\]/g) && !currentKey) {
+                         alert("Selected text copied. Provide an encryption key to decrypt locked content.");
+                    } else {
+                        alert("Selected text copied to clipboard!");
+                    }
+                } catch (err) {
+                    console.error('Failed to copy text: ', err);
+                    alert('Failed to copy selected text to clipboard.');
+                }
+
+            } else { // No text selected, try to copy label at cursor
+                if (!currentKey) {
+                    alert("Please enter an encryption key to copy decrypted content.");
                     return;
                 }
+                const cursorPos = selectionStart;
+                let labelToCopy = null;
+                const labelRegex = /\[LOCKED_CONTENT_#\d+\]/g;
+                let match;
 
-                const decryptedText = await decryptRawData(encryptedDataString, currentKey);
+                // Find if cursor is inside a label in the full text
+                while ((match = labelRegex.exec(fullText)) !== null) {
+                    if (cursorPos >= match.index && cursorPos <= match.index + match[0].length) {
+                        labelToCopy = match[0];
+                        break;
+                    }
+                }
 
-                if (decryptedText !== null) {
-                    try {
-                        await navigator.clipboard.writeText(decryptedText);
-                        alert("Decrypted text copied to clipboard!");
-                    } catch (err) {
-                        console.error('Failed to copy text: ', err);
-                        alert('Failed to copy decrypted text to clipboard.');
+                if (labelToCopy) {
+                    const encryptedDataString = encryptedTextMap[labelToCopy];
+                    if (!encryptedDataString) {
+                        alert("Could not find encrypted data for this label.");
+                        return;
+                    }
+
+                    const decryptedText = await decryptRawData(encryptedDataString, currentKey);
+
+                    if (decryptedText !== null) {
+                        try {
+                            await navigator.clipboard.writeText(decryptedText);
+                            alert("Decrypted text copied to clipboard!");
+                        } catch (err) {
+                            console.error('Failed to copy text: ', err);
+                            alert('Failed to copy decrypted text to clipboard.');
+                        }
+                    } else {
+                        alert("Failed to decrypt. Key might be incorrect or data corrupted.");
                     }
                 } else {
-                    alert("Failed to decrypt. Key might be incorrect or data corrupted.");
+                    alert("Cursor is not inside a recognized encrypted label. Cannot copy.");
                 }
-            } else {
-                alert("Cursor is not inside a recognized encrypted label. Cannot copy.");
             }
         });
     }
