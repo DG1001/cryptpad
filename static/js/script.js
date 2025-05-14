@@ -2,7 +2,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const encryptionKeyInput = document.getElementById('encryptionKey');
     const markdownTextArea = document.getElementById('markdownInput');
     const encryptButton = document.getElementById('encryptButton');
-    const decryptButton = document.getElementById('decryptButton'); // New button
+    const decryptButton = document.getElementById('decryptButton');
+    const copyButton = document.getElementById('copyButton'); // New button
     const saveButton = document.getElementById('saveButton');
 
     const KEY_STORAGE_ID = 'encryptionKey';
@@ -295,124 +296,55 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Mouseover and click handling for encrypted placeholders (simplified for textarea)
-    let activePopup = null;
-
-    if (markdownTextArea) {
-        markdownTextArea.addEventListener('mousemove', async (event) => {
-            const text = markdownTextArea.value;
-            const cursorPos = markdownTextArea.selectionStart; 
-            let hoveredLabel = null;
-            
-            const labelRegex = /\[LOCKED_CONTENT_#\d+\]/g;
-            let match;
-            while ((match = labelRegex.exec(text)) !== null) {
-                if (cursorPos >= match.index && cursorPos <= match.index + match[0].length) {
-                    hoveredLabel = match[0];
-                    break;
-                }
+    
+    if (copyButton && markdownTextArea) {
+        copyButton.addEventListener('click', async () => {
+            const currentKey = encryptionKeyInput.value;
+            if (!currentKey) {
+                alert("Please enter an encryption key to copy.");
+                return;
             }
 
-            if (hoveredLabel) {
-                if (activePopup && activePopup.dataset.placeholder === hoveredLabel) {
-                    positionPopup(event, activePopup); 
-                    return;
-                }
-                
-                if (activePopup) {
-                    activePopup.remove();
-                    activePopup = null;
-                }
-
-                const currentKey = encryptionKeyInput.value;
-                const encryptedDataString = encryptedTextMap[hoveredLabel];
-                if (!encryptedDataString) return; // Label not found in map
-
-                const decryptedText = await decryptRawData(encryptedDataString, currentKey);
-
-                if (decryptedText) {
-                    activePopup = document.createElement('div');
-                    activePopup.className = 'decryption-popup';
-                    activePopup.textContent = decryptedText;
-                    activePopup.dataset.placeholder = hoveredLabel; // Store which label it's for
-                    document.body.appendChild(activePopup);
-                    positionPopup(event, activePopup);
-                }
-            } else {
-                if (activePopup) {
-                    activePopup.remove();
-                    activePopup = null;
-                }
-            }
-        });
-
-        markdownTextArea.addEventListener('mouseleave', () => {
-            if (activePopup) {
-                activePopup.remove();
-                activePopup = null;
-            }
-        });
-        
-        markdownTextArea.addEventListener('click', async (event) => {
             const text = markdownTextArea.value;
             const cursorPos = markdownTextArea.selectionStart;
-            let clickedLabel = null;
+            let labelToCopy = null;
             
             const labelRegex = /\[LOCKED_CONTENT_#\d+\]/g;
             let match;
 
+            // Find if cursor is inside a label
             while ((match = labelRegex.exec(text)) !== null) {
-                if (markdownTextArea.selectionEnd === markdownTextArea.selectionStart &&
-                    cursorPos >= match.index && cursorPos <= match.index + match[0].length) {
-                    clickedLabel = match[0];
+                if (cursorPos >= match.index && cursorPos <= match.index + match[0].length) {
+                    labelToCopy = match[0];
                     break;
                 }
             }
 
-            if (clickedLabel) {
-                const currentKey = encryptionKeyInput.value;
-                const encryptedDataString = encryptedTextMap[clickedLabel];
+            if (labelToCopy) {
+                const encryptedDataString = encryptedTextMap[labelToCopy];
                 if (!encryptedDataString) {
                     alert("Could not find encrypted data for this label.");
                     return;
                 }
 
                 const decryptedText = await decryptRawData(encryptedDataString, currentKey);
-                if (decryptedText) {
+
+                if (decryptedText !== null) {
                     try {
                         await navigator.clipboard.writeText(decryptedText);
-                        // Optionally, provide feedback that text was copied
-                        // For example, flash the popup or show a temporary message
-                        if(activePopup) { // If popup was visible
-                            const originalText = activePopup.textContent;
-                            activePopup.textContent = "Copied!";
-                            setTimeout(() => {
-                                if(activePopup) activePopup.textContent = originalText;
-                            }, 1000);
-                        } else {
-                            // If no popup, maybe a small temporary message near cursor or input
-                            console.log("Decrypted text copied to clipboard.");
-                        }
+                        alert("Decrypted text copied to clipboard!");
                     } catch (err) {
                         console.error('Failed to copy text: ', err);
                         alert('Failed to copy decrypted text to clipboard.');
                     }
-                } else if (currentKey) {
-                    alert("Failed to decrypt. Key might be incorrect or data corrupted.");
                 } else {
-                    alert("Please enter the encryption key to decrypt and copy.");
+                    alert("Failed to decrypt. Key might be incorrect or data corrupted.");
                 }
+            } else {
+                alert("Cursor is not inside a recognized encrypted label. Cannot copy.");
             }
         });
     }
-
-    function positionPopup(event, popupElement) {
-        // Position popup near mouse cursor
-        // Add some offset to prevent flickering if mouse is exactly on popup edge
-        popupElement.style.left = (event.pageX + 15) + 'px';
-        popupElement.style.top = (event.pageY + 15) + 'px';
-    }
-
 
     // Initial load of page content
     if (markdownTextArea) { // Check if editor element exists
