@@ -4,25 +4,46 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Page: {{ page_id }}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+          theme: {
+            extend: {
+              fontFamily: {
+                sans: ['Inter', 'sans-serif'],
+              },
+            }
+          }
+        }
+      </script>
 </head>
-<body>
-    <div class="container">
-        <h1>Editing: {{ page_id }}</h1>
-        <p>Share this URL: <a href="{{ url_for('editor', page_id=page_id, _external=True) }}">{{ url_for('editor', page_id=page_id, _external=True) }}</a></p>
-        
-        <div>
-            <label for="encryptionKey">Encryption Key:</label>
-            <input type="password" id="encryptionKey" placeholder="Enter key for encryption/decryption">
+<body class="bg-gray-100 text-gray-800 font-sans py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-4xl mx-auto bg-white p-6 sm:p-8 rounded-xl shadow-2xl">
+        <div class="mb-6">
+            <h1 class="text-2xl sm:text-3xl font-semibold text-gray-900">Editing: <span class="font-mono text-blue-600">{{ page_id }}</span></h1>
+            <p class="mt-2 text-sm text-gray-600">
+                Share this URL: 
+                <a href="{{ url_for('editor', page_id=page_id, _external=True) }}" class="text-blue-600 hover:text-blue-700 underline">
+                    {{ url_for('editor', page_id=page_id, _external=True) }}
+                </a>
+            </p>
         </div>
         
-        <textarea id="markdownInput" rows="20" cols="80" placeholder="Enter your markdown text here..."></textarea>
+        <div class="mb-6">
+            <label for="encryptionKey" class="block text-sm font-medium text-gray-700 mb-1">Encryption Key:</label>
+            <input type="password" id="encryptionKey" placeholder="Enter key for encryption/decryption" class="mt-1 block w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150">
+        </div>
         
-        <div>
-            <button id="encryptButton">Encrypt Selected Text</button>
-            <button id="decryptButton">Decrypt At Cursor</button>
-            <button id="copyButton">Copy Decrypted At Cursor</button>
-            <button id="saveButton">Save Page</button>
+        <div class="mb-6">
+            <label for="markdownInput" class="block text-sm font-medium text-gray-700 mb-1">Content:</label>
+            <textarea id="markdownInput" rows="15" placeholder="Enter your text here..." class="mt-1 block w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"></textarea>
+        </div>
+        
+        <div class="flex flex-wrap gap-3 items-center justify-start">
+            <button id="encryptButton" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75">Encrypt Selected</button>
+            <button id="decryptButton" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2.5 px-5 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-75">Decrypt At Cursor</button>
+            <button id="copyButton" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2.5 px-5 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-75">Copy Decrypted</button>
+            <button id="saveButton" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75 ml-auto">Save Page</button>
         </div>
     </div>
 

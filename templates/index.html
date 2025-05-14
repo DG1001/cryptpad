@@ -3,14 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Markdown Editor - Home</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <title>Encrypted Text Editor - Home</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+          theme: {
+            extend: {
+              fontFamily: {
+                sans: ['Inter', 'sans-serif'], // A font often seen in modern UIs
+              },
+            }
+          }
+        }
+      </script>
 </head>
-<body>
-    <div class="container">
-        <h1>Welcome to the Markdown Editor</h1>
+<body class="bg-gray-100 text-gray-800 font-sans flex items-center justify-center min-h-screen">
+    <div class="bg-white p-8 sm:p-12 rounded-xl shadow-2xl max-w-md w-full text-center">
+        <h1 class="text-3xl sm:text-4xl font-semibold text-gray-900 mb-8">Encrypted Text Editor</h1>
         <form action="{{ url_for('new_page') }}" method="POST">
-            <button type="submit">Create a New Page</button>
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75">
+                Create a New Page
+            </button>
         </form>
     </div>
 </body>
