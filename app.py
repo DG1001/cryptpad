@@ -73,4 +73,4 @@ def load_page(page_id):
         return jsonify({"success": False, "message": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host='0.0.0.0', debug=True)
