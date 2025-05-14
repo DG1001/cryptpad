@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const encryptionKeyInput = document.getElementById('encryptionKey');
     const markdownTextArea = document.getElementById('markdownInput');
     const encryptButton = document.getElementById('encryptButton');
+    const decryptButton = document.getElementById('decryptButton'); // New button
     const saveButton = document.getElementById('saveButton');
 
     const KEY_STORAGE_ID = 'encryptionKey';
@@ -235,6 +236,63 @@ document.addEventListener('DOMContentLoaded', () => {
             return encryptedTextMap[labelPlaceholder] || labelPlaceholder; // Fallback to label if not in map (error)
         });
         return rawContent;
+    }
+    
+    if (decryptButton && markdownTextArea) {
+        decryptButton.addEventListener('click', async () => {
+            const currentKey = encryptionKeyInput.value;
+            if (!currentKey) {
+                alert("Please enter an encryption key.");
+                return;
+            }
+
+            const text = markdownTextArea.value;
+            const cursorPos = markdownTextArea.selectionStart;
+            let labelToDecrypt = null;
+            let labelStartIndex = -1;
+            let labelEndIndex = -1;
+            
+            const labelRegex = /\[LOCKED_CONTENT_#\d+\]/g;
+            let match;
+
+            while ((match = labelRegex.exec(text)) !== null) {
+                if (cursorPos >= match.index && cursorPos <= match.index + match[0].length) {
+                    labelToDecrypt = match[0];
+                    labelStartIndex = match.index;
+                    labelEndIndex = match.index + match[0].length;
+                    break;
+                }
+            }
+
+            if (labelToDecrypt) {
+                const encryptedDataString = encryptedTextMap[labelToDecrypt];
+                if (!encryptedDataString) {
+                    alert("Could not find encrypted data for this label. It might have been already decrypted or an error occurred.");
+                    return;
+                }
+
+                const decryptedText = await decryptRawData(encryptedDataString, currentKey);
+
+                if (decryptedText !== null) {
+                    // Replace the label with the decrypted text in the textarea
+                    const beforeText = text.substring(0, labelStartIndex);
+                    const afterText = text.substring(labelEndIndex);
+                    markdownTextArea.value = beforeText + decryptedText + afterText;
+
+                    // Remove the mapping as it's now decrypted
+                    delete encryptedTextMap[labelToDecrypt];
+                    
+                    // Adjust cursor position to be after the inserted decrypted text
+                    markdownTextArea.selectionStart = markdownTextArea.selectionEnd = labelStartIndex + decryptedText.length;
+                    markdownTextArea.focus(); // Refocus on textarea
+                    alert("Text decrypted successfully.");
+                } else {
+                    alert("Failed to decrypt. Key might be incorrect or data corrupted.");
+                }
+            } else {
+                alert("Cursor is not inside a recognized encrypted label.");
+            }
+        });
     }
     
     // Mouseover and click handling for encrypted placeholders (simplified for textarea)
