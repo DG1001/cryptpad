@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Page: {{ page_id }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Editing: {{ page_id }}</h1>
+        <p>Share this URL: <a href="{{ url_for('editor', page_id=page_id, _external=True) }}">{{ url_for('editor', page_id=page_id, _external=True) }}</a></p>
+        
+        <div>
+            <label for="encryptionKey">Encryption Key:</label>
+            <input type="password" id="encryptionKey" placeholder="Enter key for encryption/decryption">
+        </div>
+        
+        <textarea id="markdownInput" rows="20" cols="80" placeholder="Enter your markdown text here..."></textarea>
+        
+        <div>
+            <button id="encryptButton">Encrypt Selected Text</button>
+            <button id="saveButton">Save Page</button>
+        </div>
+
+        <h2>Preview (Markdown rendering not yet implemented)</h2>
+        <div id="previewArea" class="preview">
+            <!-- Rendered markdown will appear here -->
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        // Pass page_id to script.js
+        const currentPageId = "{{ page_id }}";
+    </script>
+</body>
+</html>
