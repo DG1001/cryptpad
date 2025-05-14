@@ -6,6 +6,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const KEY_STORAGE_ID = 'encryptionKey';
 
+    let encryptedTextMap = {}; // Stores mapping from labelPlaceholder to ENC<data>
+    let encryptedTextCounter = 0; // Used to generate unique label IDs
+
     // Load encryption key from localStorage
     if (encryptionKeyInput && localStorage.getItem(KEY_STORAGE_ID)) { // Added check for encryptionKeyInput
         encryptionKeyInput.value = localStorage.getItem(KEY_STORAGE_ID);
@@ -27,9 +30,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
             if (data.success) {
                 if (markdownTextArea) {
-                    markdownTextArea.value = data.content;
-                    // Process content for encrypted placeholders after loading
-                    processForEncryptedPlaceholders(markdownTextArea);
+                    const displayContent = transformContentForDisplay(data.content);
+                    markdownTextArea.value = displayContent;
+                    // The event listeners will handle finding these new labels
+                    // processForEncryptedPlaceholders might not be strictly needed for textarea
                 }
             } else {
                 console.error('Failed to load page:', data.message);
@@ -45,10 +49,11 @@ document.addEventListener('DOMContentLoaded', () => {
     async function savePageContent() {
         if (typeof currentPageId === 'undefined') return;
         
-        let content = "";
+        let contentWithLabels = "";
         if (markdownTextArea) {
-            content = markdownTextArea.value;
+            contentWithLabels = markdownTextArea.value;
         }
+        const rawContent = transformContentForSaving(contentWithLabels);
 
         try {
             const response = await fetch(`/${currentPageId}/save`, {
@@ -56,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ content: content }),
+                body: JSON.stringify({ content: rawContent }),
             });
             const data = await response.json();
             if (data.success) {
@@ -74,19 +79,14 @@ document.addEventListener('DOMContentLoaded', () => {
         saveButton.addEventListener('click', savePageContent);
     }
 
-    // Placeholder for encryption logic
+    // Encryption logic: returns a label placeholder, stores mapping
     async function encryptText(text, key) {
-        // This is a very basic placeholder.
-        // Real implementation should use Web Crypto API (crypto.subtle) for AES-GCM or similar.
         if (!key) {
             alert("Please enter an encryption key.");
             return null;
         }
-        // Simulate encryption for now - in a real app, this would be actual crypto
-        // For demonstration, let's just base64 encode it and add a prefix
-        // This is NOT secure.
         try {
-            const iv = crypto.getRandomValues(new Uint8Array(12)); // Initialization vector for AES-GCM
+            const iv = crypto.getRandomValues(new Uint8Array(12));
             const encodedText = new TextEncoder().encode(text);
             const cryptoKey = await getCryptoKey(key);
 
@@ -97,10 +97,16 @@ document.addEventListener('DOMContentLoaded', () => {
             );
             
             const encryptedData = {
-                iv: Array.from(iv), // Convert Uint8Array to array for JSON stringification
-                ciphertext: Array.from(new Uint8Array(encryptedContent)) // Convert ArrayBuffer to Uint8Array then to array
+                iv: Array.from(iv),
+                ciphertext: Array.from(new Uint8Array(encryptedContent))
             };
-            return `ENC<${btoa(JSON.stringify(encryptedData))}>`;
+            const encryptedDataString = `ENC<${btoa(JSON.stringify(encryptedData))}>`;
+
+            encryptedTextCounter++;
+            const labelPlaceholder = `[LOCKED_CONTENT_#${encryptedTextCounter}]`;
+            encryptedTextMap[labelPlaceholder] = encryptedDataString;
+            
+            return labelPlaceholder;
 
         } catch (e) {
             console.error("Encryption failed:", e);
@@ -109,17 +115,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Placeholder for decryption logic
-    async function decryptText(encryptedPlaceholder, key) {
+    // Decryption logic: now takes the raw ENC<...> string
+    async function decryptRawData(encryptedDataString, key) {
         if (!key) {
-            // No key, can't decrypt
             return null; 
         }
-        if (!encryptedPlaceholder.startsWith('ENC<') || !encryptedPlaceholder.endsWith('>')) {
-            return null; // Not a valid placeholder
+        if (!encryptedDataString || !encryptedDataString.startsWith('ENC<') || !encryptedDataString.endsWith('>')) {
+            console.error("Invalid encrypted data format for decryption:", encryptedDataString);
+            return null; 
         }
         
-        const base64Data = encryptedPlaceholder.substring(4, encryptedPlaceholder.length - 1);
+        const base64Data = encryptedDataString.substring(4, encryptedDataString.length - 1);
         try {
             const encryptedData = JSON.parse(atob(base64Data));
             const iv = new Uint8Array(encryptedData.iv);
@@ -165,8 +171,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const beforeText = markdownTextArea.value.substring(0, selectionStart);
                     const afterText = markdownTextArea.value.substring(selectionEnd);
                     markdownTextArea.value = beforeText + encryptedPlaceholder + afterText;
-                    // After encrypting, re-process for placeholders to make them interactive
-                    processForEncryptedPlaceholders(markdownTextArea);
+                    // No need to call processForEncryptedPlaceholders explicitly here,
+                    // the event listeners will pick up the new labels.
                 }
             } else if (!selectedText) {
                 alert("Please select text to encrypt.");
@@ -203,6 +209,32 @@ document.addEventListener('DOMContentLoaded', () => {
         // Let's try a simplified approach for mouseover:
         // When mouse moves over textarea, check if cursor is over a known placeholder.
         // This requires knowing placeholder positions.
+        // For textarea, this function is less critical as direct DOM manipulation of placeholders isn't done.
+        // Event listeners handle interactions.
+    }
+
+    function transformContentForDisplay(rawContent) {
+        encryptedTextMap = {}; // Reset map for fresh load
+        encryptedTextCounter = 0; // Reset counter
+        const encRegex = /ENC<[^>]+>/g;
+        
+        // Replace ENC<data> with labels and populate the map
+        const displayContent = rawContent.replace(encRegex, (encryptedDataString) => {
+            encryptedTextCounter++;
+            const labelPlaceholder = `[LOCKED_CONTENT_#${encryptedTextCounter}]`;
+            encryptedTextMap[labelPlaceholder] = encryptedDataString;
+            return labelPlaceholder;
+        });
+        return displayContent;
+    }
+
+    function transformContentForSaving(contentWithLabels) {
+        const labelRegex = /\[LOCKED_CONTENT_#\d+\]/g;
+        // Replace labels back with their original ENC<data> strings
+        const rawContent = contentWithLabels.replace(labelRegex, (labelPlaceholder) => {
+            return encryptedTextMap[labelPlaceholder] || labelPlaceholder; // Fallback to label if not in map (error)
+        });
+        return rawContent;
     }
     
     // Mouseover and click handling for encrypted placeholders (simplified for textarea)
@@ -211,39 +243,40 @@ document.addEventListener('DOMContentLoaded', () => {
     if (markdownTextArea) {
         markdownTextArea.addEventListener('mousemove', async (event) => {
             const text = markdownTextArea.value;
-            const cursorPos = markdownTextArea.selectionStart; // Approximation of mouse position in text
-            let hoveredPlaceholder = null;
+            const cursorPos = markdownTextArea.selectionStart; 
+            let hoveredLabel = null;
             
-            const regex = /ENC<[^>]+>/g;
+            const labelRegex = /\[LOCKED_CONTENT_#\d+\]/g;
             let match;
-            while ((match = regex.exec(text)) !== null) {
+            while ((match = labelRegex.exec(text)) !== null) {
                 if (cursorPos >= match.index && cursorPos <= match.index + match[0].length) {
-                    hoveredPlaceholder = match[0];
+                    hoveredLabel = match[0];
                     break;
                 }
             }
 
-            if (hoveredPlaceholder) {
-                if (activePopup && activePopup.dataset.placeholder === hoveredPlaceholder) {
-                    // Popup already shown for this placeholder
-                    positionPopup(event, activePopup); // Keep it near mouse
+            if (hoveredLabel) {
+                if (activePopup && activePopup.dataset.placeholder === hoveredLabel) {
+                    positionPopup(event, activePopup); 
                     return;
                 }
                 
-                // Remove old popup if any
                 if (activePopup) {
                     activePopup.remove();
                     activePopup = null;
                 }
 
                 const currentKey = encryptionKeyInput.value;
-                const decryptedText = await decryptText(hoveredPlaceholder, currentKey);
+                const encryptedDataString = encryptedTextMap[hoveredLabel];
+                if (!encryptedDataString) return; // Label not found in map
+
+                const decryptedText = await decryptRawData(encryptedDataString, currentKey);
 
                 if (decryptedText) {
                     activePopup = document.createElement('div');
                     activePopup.className = 'decryption-popup';
                     activePopup.textContent = decryptedText;
-                    activePopup.dataset.placeholder = hoveredPlaceholder; // Store which placeholder it's for
+                    activePopup.dataset.placeholder = hoveredLabel; // Store which label it's for
                     document.body.appendChild(activePopup);
                     positionPopup(event, activePopup);
                 }
@@ -265,24 +298,28 @@ document.addEventListener('DOMContentLoaded', () => {
         markdownTextArea.addEventListener('click', async (event) => {
             const text = markdownTextArea.value;
             const cursorPos = markdownTextArea.selectionStart;
-            let clickedPlaceholder = null;
+            let clickedLabel = null;
             
-            const regex = /ENC<[^>]+>/g;
+            const labelRegex = /\[LOCKED_CONTENT_#\d+\]/g;
             let match;
-            // Check if the click was within a placeholder
-            // This is an approximation. A more robust way would be to calculate click position relative to text.
-            while ((match = regex.exec(text)) !== null) {
-                 // If selection is just a caret (no range), and it's inside a placeholder
+
+            while ((match = labelRegex.exec(text)) !== null) {
                 if (markdownTextArea.selectionEnd === markdownTextArea.selectionStart &&
                     cursorPos >= match.index && cursorPos <= match.index + match[0].length) {
-                    clickedPlaceholder = match[0];
+                    clickedLabel = match[0];
                     break;
                 }
             }
 
-            if (clickedPlaceholder) {
+            if (clickedLabel) {
                 const currentKey = encryptionKeyInput.value;
-                const decryptedText = await decryptText(clickedPlaceholder, currentKey);
+                const encryptedDataString = encryptedTextMap[clickedLabel];
+                if (!encryptedDataString) {
+                    alert("Could not find encrypted data for this label.");
+                    return;
+                }
+
+                const decryptedText = await decryptRawData(encryptedDataString, currentKey);
                 if (decryptedText) {
                     try {
                         await navigator.clipboard.writeText(decryptedText);
