@@ -55,6 +55,8 @@ textarea#markdownInput {
     min-height: 200px;
 }
 
+/* Styles for the old preview area can be removed if not used elsewhere */
+/*
 .preview {
     background-color: #e9e9e9;
     padding: 15px;
@@ -62,6 +64,7 @@ textarea#markdownInput {
     min-height: 100px;
     border: 1px solid #ccc;
 }
+*/
 
 .decryption-popup {
     position: absolute; /* Positioned by JS */
