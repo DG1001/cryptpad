@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Page: {{ page_id }}</title>
-    <!-- EasyMDE CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
@@ -24,11 +22,8 @@
             <button id="encryptButton">Encrypt Selected Text</button>
             <button id="saveButton">Save Page</button>
         </div>
-        <!-- EasyMDE will render its preview here or side-by-side -->
     </div>
 
-    <!-- EasyMDE JavaScript -->
-    <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
     <script>
         // Pass page_id to script.js

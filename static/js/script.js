@@ -1,23 +1,13 @@
 document.addEventListener('DOMContentLoaded', () => {
     const encryptionKeyInput = document.getElementById('encryptionKey');
-    const markdownTextArea = document.getElementById('markdownInput'); // Renamed for clarity
+    const markdownTextArea = document.getElementById('markdownInput');
     const encryptButton = document.getElementById('encryptButton');
     const saveButton = document.getElementById('saveButton');
 
     const KEY_STORAGE_ID = 'encryptionKey';
-    let easymde = null;
-
-    if (markdownTextArea) {
-        easymde = new EasyMDE({
-            element: markdownTextArea,
-            spellChecker: false, // Optional: disable spell checker
-            // You can add more configuration options here
-            // e.g., status bar, toolbar icons, etc.
-        });
-    }
 
     // Load encryption key from localStorage
-    if (localStorage.getItem(KEY_STORAGE_ID)) {
+    if (encryptionKeyInput && localStorage.getItem(KEY_STORAGE_ID)) { // Added check for encryptionKeyInput
         encryptionKeyInput.value = localStorage.getItem(KEY_STORAGE_ID);
     }
 
@@ -36,13 +26,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const data = await response.json();
             if (data.success) {
-                if (easymde) {
-                    easymde.value(data.content);
-                    // Process content for encrypted placeholders after loading
-                    // Note: processForEncryptedPlaceholders might need adjustments for EasyMDE/CodeMirror
-                    processForEncryptedPlaceholders(easymde.codemirror); 
-                } else if (markdownTextArea) { // Fallback if EasyMDE failed to init
+                if (markdownTextArea) {
                     markdownTextArea.value = data.content;
+                    // Process content for encrypted placeholders after loading
+                    processForEncryptedPlaceholders(markdownTextArea);
                 }
             } else {
                 console.error('Failed to load page:', data.message);
@@ -59,9 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof currentPageId === 'undefined') return;
         
         let content = "";
-        if (easymde) {
-            content = easymde.value();
-        } else if (markdownTextArea) { // Fallback
+        if (markdownTextArea) {
             content = markdownTextArea.value;
         }
 
@@ -167,18 +152,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    if (encryptButton && easymde) { // Ensure EasyMDE is initialized
+    if (encryptButton && markdownTextArea) { 
         encryptButton.addEventListener('click', async () => {
-            const cm = easymde.codemirror;
-            const selectedText = cm.getSelection();
+            const selectionStart = markdownTextArea.selectionStart;
+            const selectionEnd = markdownTextArea.selectionEnd;
+            const selectedText = markdownTextArea.value.substring(selectionStart, selectionEnd);
             const currentKey = encryptionKeyInput.value;
 
             if (selectedText && currentKey) {
                 const encryptedPlaceholder = await encryptText(selectedText, currentKey);
                 if (encryptedPlaceholder) {
-                    cm.replaceSelection(encryptedPlaceholder);
+                    const beforeText = markdownTextArea.value.substring(0, selectionStart);
+                    const afterText = markdownTextArea.value.substring(selectionEnd);
+                    markdownTextArea.value = beforeText + encryptedPlaceholder + afterText;
                     // After encrypting, re-process for placeholders to make them interactive
-                    processForEncryptedPlaceholders(cm);
+                    processForEncryptedPlaceholders(markdownTextArea);
                 }
             } else if (!selectedText) {
                 alert("Please select text to encrypt.");
@@ -190,21 +178,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function processForEncryptedPlaceholders(element) {
         // This function will find ENC<...> placeholders and make them interactive.
-        // For simplicity, we'll re-apply this to the whole editor content.
+        // For simplicity, we'll re-apply this to the whole textarea content.
         // A more performant approach might be needed for very large texts.
-        // `element` is now expected to be a CodeMirror instance from EasyMDE.
         
         // Remove existing popups and event listeners to avoid duplication
         document.querySelectorAll('.decryption-popup').forEach(p => p.remove());
 
-        if (!element || typeof element.getValue !== 'function') {
-            console.warn("processForEncryptedPlaceholders: CodeMirror instance not provided correctly.");
+        if (!element || typeof element.value === 'undefined') { // Check for textarea
+            console.warn("processForEncryptedPlaceholders: Textarea element not provided correctly.");
             return;
         }
 
-        const text = element.getValue(); // Get text from CodeMirror instance
+        const text = element.value; // Get text from textarea
         
-        // We can't directly overlay HTML on textarea content. (Comment still relevant for concept)
+        // We can't directly overlay HTML on textarea content.
         // The "popup" on mouseover for a textarea is tricky.
         // A common approach is to show a tooltip near the mouse cursor or a fixed position popup.
         // For clicking, we can check if the click was on a placeholder.
@@ -221,30 +208,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Mouseover and click handling for encrypted placeholders (simplified for textarea)
     let activePopup = null;
 
-    if (easymde) { // Attach to CodeMirror instance used by EasyMDE
-        const cmInstance = easymde.codemirror;
-        cmInstance.on('mousemove', async (cm, event) => { // CodeMirror's event structure
-            const coords = cm.coordsChar({ left: event.clientX, top: event.clientY }, 'window');
-            const text = cm.getValue();
+    if (markdownTextArea) {
+        markdownTextArea.addEventListener('mousemove', async (event) => {
+            const text = markdownTextArea.value;
+            const cursorPos = markdownTextArea.selectionStart; // Approximation of mouse position in text
             let hoveredPlaceholder = null;
-            let placeholderMatch = null; // To store the match object for index
-
-            // Iterate through placeholders to find if cursor is over one
+            
             const regex = /ENC<[^>]+>/g;
             let match;
             while ((match = regex.exec(text)) !== null) {
-                const placeholderStartPos = cm.posFromIndex(match.index);
-                const placeholderEndPos = cm.posFromIndex(match.index + match[0].length);
-
-                // Check if coords.line is within placeholder's line range
-                // And if coords.ch is within placeholder's char range on that line
-                // This is a simplified check; multi-line placeholders need more complex logic
-                if (coords.line >= placeholderStartPos.line && coords.line <= placeholderEndPos.line) {
-                    if (coords.line === placeholderStartPos.line && coords.ch < placeholderStartPos.ch) continue;
-                    if (coords.line === placeholderEndPos.line && coords.ch > placeholderEndPos.ch) continue;
-                    
+                if (cursorPos >= match.index && cursorPos <= match.index + match[0].length) {
                     hoveredPlaceholder = match[0];
-                    placeholderMatch = match; // Store the match
                     break;
                 }
             }
@@ -271,8 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     activePopup.textContent = decryptedText;
                     activePopup.dataset.placeholder = hoveredPlaceholder; // Store which placeholder it's for
                     document.body.appendChild(activePopup);
-                    // Use original mouse event for positioning popup relative to viewport
-                    positionPopup(event, activePopup); 
+                    positionPopup(event, activePopup);
                 }
             } else {
                 if (activePopup) {
@@ -282,35 +255,28 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Mouseleave for CodeMirror needs to be on its wrapper element
-        cmInstance.getWrapperElement().addEventListener('mouseleave', () => {
+        markdownTextArea.addEventListener('mouseleave', () => {
             if (activePopup) {
                 activePopup.remove();
                 activePopup = null;
             }
         });
         
-        cmInstance.on('mousedown', async (cm, event) => { // Use mousedown for CodeMirror, click might be too late
-            const clickCoords = cm.coordsChar({ left: event.clientX, top: event.clientY }, 'window');
-            const text = cm.getValue();
+        markdownTextArea.addEventListener('click', async (event) => {
+            const text = markdownTextArea.value;
+            const cursorPos = markdownTextArea.selectionStart;
             let clickedPlaceholder = null;
             
             const regex = /ENC<[^>]+>/g;
             let match;
             // Check if the click was within a placeholder
+            // This is an approximation. A more robust way would be to calculate click position relative to text.
             while ((match = regex.exec(text)) !== null) {
-                const placeholderStartPos = cm.posFromIndex(match.index);
-                const placeholderEndPos = cm.posFromIndex(match.index + match[0].length);
-
-                if (clickCoords.line >= placeholderStartPos.line && clickCoords.line <= placeholderEndPos.line) {
-                    if (clickCoords.line === placeholderStartPos.line && clickCoords.ch < placeholderStartPos.ch) continue;
-                    if (clickCoords.line === placeholderEndPos.line && clickCoords.ch > placeholderEndPos.ch) continue;
-                    
-                    // Check if selection is a caret (no range)
-                    if (!cm.somethingSelected()) {
-                         clickedPlaceholder = match[0];
-                         break;
-                    }
+                 // If selection is just a caret (no range), and it's inside a placeholder
+                if (markdownTextArea.selectionEnd === markdownTextArea.selectionStart &&
+                    cursorPos >= match.index && cursorPos <= match.index + match[0].length) {
+                    clickedPlaceholder = match[0];
+                    break;
                 }
             }
 
@@ -354,7 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // Initial load of page content
-    if (easymde || markdownTextArea) { // Check if editor element exists
+    if (markdownTextArea) { // Check if editor element exists
         loadPageContent();
     }
 });
