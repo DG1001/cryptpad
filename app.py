@@ -39,8 +39,13 @@ def editor(page_id):
     """Serves the editor page for a given page_id."""
     file_path = os.path.join(DATA_DIR, f"{page_id}.md")
     if not os.path.exists(file_path) or not len(page_id) == 4 or not page_id.isalnum():
-        return "Page not found", 404
+        return render_template("404.html"), 404
     return render_template("editor.html", page_id=page_id)
+
+@app.errorhandler(404)
+def page_not_found(e):
+    """Serves the custom 404 page."""
+    return render_template("404.html"), 404
 
 @app.route("/<page_id>/save", methods=["POST"])
 def save_page(page_id):
