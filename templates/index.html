@@ -17,7 +17,7 @@
         }
       </script>
 </head>
-<body class="bg-gray-100 text-gray-800 font-sans flex items-center justify-center min-h-screen">
+<body class="text-gray-800 font-sans flex items-center justify-center min-h-screen" style="background-image: url('{{ url_for('static', filename='images/cryptpad_back.png') }}'); background-size: cover; background-position: center; background-repeat: no-repeat;">
     <div class="bg-white p-8 sm:p-12 rounded-xl shadow-2xl max-w-md w-full text-center">
         <img src="{{ url_for('static', filename='images/cryptpad_logo.png') }}" alt="CryptPad Logo" class="mx-auto mb-6 h-48 w-auto">
         <h1 class="text-3xl sm:text-4xl font-semibold text-gray-900 mb-8">Encrypted Text Editor</h1>
