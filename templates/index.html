@@ -19,6 +19,7 @@
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans flex items-center justify-center min-h-screen">
     <div class="bg-white p-8 sm:p-12 rounded-xl shadow-2xl max-w-md w-full text-center">
+        <img src="{{ url_for('static', filename='images/cryptpad_logo.png') }}" alt="CryptPad Logo" class="mx-auto mb-6 h-24 w-auto">
         <h1 class="text-3xl sm:text-4xl font-semibold text-gray-900 mb-8">Encrypted Text Editor</h1>
         <form action="{{ url_for('new_page') }}" method="POST">
             <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75">
