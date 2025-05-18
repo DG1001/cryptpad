@@ -13,6 +13,13 @@ This is a simple web-based text editor that allows users to create pages, write 
     - If no text is selected and the cursor is within a label, copies the decrypted content of that label.
 - Encryption key is stored in browser's local storage for convenience.
 - Page content is saved on the server in the `data/` directory.
+- **Admin Panel:**
+    - Secure login using an environment variable `ADMIN_PASSWORD`.
+    - Create new pages.
+    - List existing pages with their last backup timestamps.
+    - Delete pages (keeps backups).
+    - Backup pages (creates a timestamped copy in the `backup/` directory).
+    - Download a zip archive of a page and all its backups.
 
 ## Setup and Running
 
@@ -36,8 +43,17 @@ This is a simple web-based text editor that allows users to create pages, write 
     pip install -r requirements.txt
     ```
 
-4.  **Create necessary directories:**
-    The application will automatically create a `data/` directory on first run if it doesn't exist. This directory is used to store the content of the pages.
+4.  **Environment Variables:**
+    -   `ADMIN_PASSWORD`: Set this environment variable to your desired admin password. If not set, a random password will be generated and logged to the console on startup.
+        ```bash
+        export ADMIN_PASSWORD='your_secure_password_here' 
+        ```
+    -   `FLASK_SECRET_KEY` (Optional): Set this for Flask session management. If not set, a random one will be generated.
+
+5.  **Create necessary directories:**
+    The application will automatically create `data/` and `backup/` directories on first run if they don't exist.
+    - `data/`: Stores the live content of the pages.
+    - `backup/`: Stores timestamped backups of pages.
     The `static/` and `templates/` directories should exist as part of the project structure.
 
 ### Running the Application
@@ -49,13 +65,17 @@ This is a simple web-based text editor that allows users to create pages, write 
 
 2.  **Access the application:**
     Open your web browser and go to `http://127.0.0.1:5000/` or `http://localhost:5000/`.
+    - To access the admin panel, go to `/admin` (e.g., `http://127.0.0.1:5000/admin`). You will be prompted to log in.
     If you configured the app to run on `0.0.0.0` (as it is by default in the provided `app.py`), you can also access it using your machine's local network IP address.
 
 ## How it Works
 
--   **Backend:** A Flask application handles routing, creating new pages, and saving/loading page content. Page content is stored as plain text files (with `.md` extension, though no markdown rendering is currently implemented) in the `data/` directory.
+-   **Backend:** A Flask application handles routing, creating new pages, saving/loading page content, and admin functionalities.
+    - Page content is stored as plain text files (with `.md` extension) in the `data/` directory.
+    - Backups are stored in the `backup/` directory, organized by page ID.
+    - Admin access is protected by a password.
 -   **Frontend:**
-    -   HTML templates are rendered by Flask.
+    -   HTML templates are rendered by Flask (including admin pages).
     -   CSS is used for basic styling.
     -   JavaScript (`static/js/script.js`) handles all client-side logic:
         -   Managing the encryption key in local storage.
