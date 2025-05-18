@@ -15,6 +15,7 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify, s
 app = Flask(__name__)
 DATA_DIR = "data"
 BACKUP_DIR = "backup" # New directory for backups
+PAGE_STATUS_FILE = os.path.join(DATA_DIR, "page_status.json")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -31,6 +32,44 @@ if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
 if not os.path.exists(BACKUP_DIR): # Create backup directory
     os.makedirs(BACKUP_DIR)
+
+# Helper functions for page status management
+def load_page_statuses():
+    """Loads page statuses from the JSON file."""
+    if not os.path.exists(PAGE_STATUS_FILE):
+        return {}
+    try:
+        with open(PAGE_STATUS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        logging.error(f"Error loading page status file: {e}")
+        return {}
+
+def save_page_statuses(statuses):
+    """Saves page statuses to the JSON file."""
+    try:
+        with open(PAGE_STATUS_FILE, "w", encoding="utf-8") as f:
+            json.dump(statuses, f, indent=4)
+    except IOError as e:
+        logging.error(f"Error saving page status file: {e}")
+
+def get_page_status(page_id):
+    """Gets the status of a page, defaulting to 'enabled'."""
+    statuses = load_page_statuses()
+    return statuses.get(page_id, "enabled")
+
+def set_page_status(page_id, status):
+    """Sets the status of a page."""
+    statuses = load_page_statuses()
+    statuses[page_id] = status
+    save_page_statuses(statuses)
+
+def remove_page_status(page_id):
+    """Removes the status entry for a page."""
+    statuses = load_page_statuses()
+    if page_id in statuses:
+        del statuses[page_id]
+        save_page_statuses(statuses)
 
 def generate_page_id(length=4):
     """Generates a random string of fixed length."""
@@ -96,7 +135,12 @@ def admin_panel():
                 logging.error(f"Could not read first line for {page_id}: {e}")
                 first_line = "[Error reading title]"
 
-            page_data = {"id": page_id, "name": page_id, "title": first_line}
+            page_data = {
+                "id": page_id,
+                "name": page_id,
+                "title": first_line,
+                "status": get_page_status(page_id)
+            }
             
             # Get backup timestamps
             page_specific_backup_dir = os.path.join(BACKUP_DIR, page_id)
@@ -125,6 +169,7 @@ def delete_page(page_id):
     if os.path.exists(file_path):
         try:
             os.remove(file_path)
+            remove_page_status(page_id) # Remove status on delete
             flash(f"Page '{page_id}' deleted successfully.", "success")
         except OSError as e:
             flash(f"Error deleting page '{page_id}': {e}", "danger")
@@ -164,6 +209,16 @@ def backup_page(page_id):
     except Exception as e:
         flash(f"Error creating backup for page '{page_id}': {e}", "danger")
         
+    return redirect(url_for("admin_panel"))
+
+@app.route("/admin/toggle_status/<page_id>", methods=["POST"])
+@login_required
+def toggle_page_status(page_id):
+    """Toggles the enabled/disabled status of a page."""
+    current_status = get_page_status(page_id)
+    new_status = "disabled" if current_status == "enabled" else "enabled"
+    set_page_status(page_id, new_status)
+    flash(f"Page '{page_id}' has been {new_status}.", "success")
     return redirect(url_for("admin_panel"))
 
 @app.route("/admin/download_page/<page_id>", methods=["GET"])
@@ -225,9 +280,26 @@ def admin_create_page():
 def editor(page_id):
     """Serves the editor page for a given page_id."""
     file_path = os.path.join(DATA_DIR, f"{page_id}.md")
-    if not os.path.exists(file_path) or not len(page_id) == 4 or not page_id.isalnum():
+
+    # Basic validation and existence check
+    if not os.path.exists(file_path) or not (len(page_id) == 4 and page_id.isalnum()):
         return render_template("404.html"), 404
+
+    # Check page status for non-admins
+    page_status = get_page_status(page_id)
+    if page_status == "disabled" and "admin_logged_in" not in session:
+        flash("This page is currently disabled and cannot be accessed.", "warning")
+        return render_template("403.html", page_id=page_id), 403
+        
     return render_template("editor.html", page_id=page_id)
+
+@app.errorhandler(403)
+def forbidden_page(e):
+    """Serves the custom 403 page."""
+    # page_id might not be available here directly from error object e
+    # if needed, it should be passed or handled differently.
+    # For now, a generic 403 page.
+    return render_template("403.html"), 403
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -237,9 +309,17 @@ def page_not_found(e):
 @app.route("/<page_id>/save", methods=["POST"])
 def save_page(page_id):
     """Saves the content of a page."""
+    # Check page status for non-admins
+    page_status = get_page_status(page_id)
+    if page_status == "disabled" and "admin_logged_in" not in session:
+        return jsonify({"success": False, "message": "Page is disabled. Cannot save."}), 403
+
     file_path = os.path.join(DATA_DIR, f"{page_id}.md")
-    if not os.path.exists(os.path.dirname(file_path)): # Should not happen if new_page created it
-        return jsonify({"success": False, "message": "Page directory not found"}), 404
+    if not os.path.exists(os.path.dirname(file_path)): 
+        # This check is more for the directory, page file itself might not exist yet if it's a brand new save
+        # However, our current flow creates empty file on admin_create_page.
+        # If page_id is invalid or dir structure is broken, this could be an issue.
+        return jsonify({"success": False, "message": "Page data directory not found"}), 500 # Internal server error more likely
     
     try:
         data = request.get_json()
@@ -253,6 +333,11 @@ def save_page(page_id):
 @app.route("/<page_id>/load", methods=["GET"])
 def load_page(page_id):
     """Loads the content of a page."""
+    # Check page status for non-admins
+    page_status = get_page_status(page_id)
+    if page_status == "disabled" and "admin_logged_in" not in session:
+        return jsonify({"success": False, "message": "Page is disabled. Cannot load."}), 403
+
     file_path = os.path.join(DATA_DIR, f"{page_id}.md")
     if not os.path.exists(file_path):
         return jsonify({"success": False, "message": "Page not found"}), 404

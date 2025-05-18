@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Forbidden - Encrypted Text Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+          theme: {
+            extend: {
+              fontFamily: {
+                sans: ['Inter', 'sans-serif'],
+              },
+            }
+          }
+        }
+    </script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="text-gray-800 font-sans flex items-center justify-center min-h-screen bg-gray-100">
+    <div class="bg-white p-8 sm:p-12 rounded-xl shadow-2xl max-w-md w-full text-center">
+        <img src="{{ url_for('static', filename='images/cryptpad_logo.png') }}" alt="Logo" class="mx-auto mb-6 h-32 w-auto opacity-50">
+        <h1 class="text-3xl sm:text-4xl font-semibold text-red-600 mb-4">Access Forbidden (403)</h1>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="mb-4 px-4 py-2 rounded-md 
+                          {% if category == 'danger' %}bg-red-100 text-red-700
+                          {% elif category == 'success' %}bg-green-100 text-green-700
+                          {% elif category == 'warning' %}bg-yellow-100 text-yellow-700
+                          {% else %}bg-blue-100 text-blue-700{% endif %}" role="alert">
+                {{ message }}
+              </div>
+            {% endfor %}
+          {% else %}
+             <p class="text-gray-600 mb-8">You do not have permission to access this page, or it is currently disabled.</p>
+          {% endif %}
+        {% endwith %}
+        
+        <div class="mt-8 space-y-4">
+            <a href="{{ url_for('index') }}" class="w-full inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 ease-in-out">
+                Go to Homepage
+            </a>
+            {% if session.admin_logged_in %}
+            <a href="{{ url_for('admin_panel') }}" class="w-full inline-block bg-gray-500 hover:bg-gray-600 text-white font-medium py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 ease-in-out">
+                Go to Admin Panel
+            </a>
+            {% else %}
+            <a href="{{ url_for('admin_login') }}" class="w-full inline-block bg-gray-500 hover:bg-gray-600 text-white font-medium py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 ease-in-out">
+                Admin Login
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
