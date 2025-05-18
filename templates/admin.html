@@ -53,10 +53,18 @@
             <div class="bg-white p-6 sm:p-8 rounded-xl shadow-lg">
                 <h2 class="text-2xl font-semibold text-gray-900 mb-6">Manage Pages</h2>
                 
-                <div class="mb-6">
-                    <form action="{{ url_for('admin_create_page') }}" method="POST">
+                <div class="mb-6 p-4 border border-gray-200 rounded-lg">
+                    <h4 class="text-lg font-medium text-gray-800 mb-3">Create New Page</h4>
+                    <form action="{{ url_for('admin_create_page') }}" method="POST" class="space-y-4">
+                        <div>
+                            <label for="custom_page_id" class="block text-sm font-medium text-gray-700">Custom Page ID (Optional)</label>
+                            <input type="text" name="custom_page_id" id="custom_page_id" 
+                                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                   placeholder="e.g., my_project_notes (3-20 chars, a-z, 0-9, _)">
+                            <p class="mt-1 text-xs text-gray-500">If left empty, a random 4-letter ID will be generated.</p>
+                        </div>
                         <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 ease-in-out">
-                            Create New Page
+                            Create Page
                         </button>
                     </form>
                 </div>

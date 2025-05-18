@@ -7,6 +7,7 @@ import secrets
 import shutil
 import io # For in-memory zip file
 import zipfile # For creating zip archives
+import re # For page ID validation
 from datetime import datetime # For backup naming
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, send_file
@@ -72,9 +73,17 @@ def remove_page_status(page_id):
         save_page_statuses(statuses)
 
 def generate_page_id(length=4):
-    """Generates a random string of fixed length."""
+    """Generates a random string of fixed length (lowercase letters)."""
     letters = string.ascii_lowercase
     return "".join(random.choice(letters) for i in range(length))
+
+def is_valid_custom_page_id(page_id):
+    """Checks if a custom page ID is valid (3-20 chars, a-z, 0-9, _)."""
+    if not (3 <= len(page_id) <= 20):
+        return False
+    if not re.match(r"^[a-z0-9_]+$", page_id):
+        return False
+    return True
 
 @app.route("/")
 def index():
@@ -258,21 +267,34 @@ def download_page(page_id):
 @app.route("/admin/create_page", methods=["POST"])
 @login_required
 def admin_create_page():
-    """Creates a new page and redirects to its editor."""
-    page_id = generate_page_id()
-    # Ensure the generated ID is unique
-    while os.path.exists(os.path.join(DATA_DIR, f"{page_id}.md")):
-        page_id = generate_page_id()
-    
+    """Creates a new page with an optional custom ID and redirects to its editor."""
+    custom_page_id = request.form.get("custom_page_id", "").strip()
+    page_id_to_create = None
+
+    if custom_page_id:
+        if not is_valid_custom_page_id(custom_page_id):
+            flash("Invalid custom Page ID. Must be 3-20 characters, lowercase letters, numbers, or underscores.", "danger")
+            return redirect(url_for("admin_panel"))
+        if os.path.exists(os.path.join(DATA_DIR, f"{custom_page_id}.md")):
+            flash(f"Page ID '{custom_page_id}' is already taken. Please choose another.", "danger")
+            return redirect(url_for("admin_panel"))
+        page_id_to_create = custom_page_id
+    else:
+        # Generate a random ID if no custom ID is provided
+        page_id_to_create = generate_page_id()
+        # Ensure the generated ID is unique
+        while os.path.exists(os.path.join(DATA_DIR, f"{page_id_to_create}.md")):
+            page_id_to_create = generate_page_id()
+            
     # Create an empty file for the new page
-    file_path = os.path.join(DATA_DIR, f"{page_id}.md")
+    file_path = os.path.join(DATA_DIR, f"{page_id_to_create}.md")
     try:
         with open(file_path, "w", encoding="utf-8") as f:
             f.write("") # Start with empty content
-        flash(f"Page '{page_id}' created successfully.", "success")
-        return redirect(url_for("editor", page_id=page_id))
+        flash(f"Page '{page_id_to_create}' created successfully.", "success")
+        return redirect(url_for("editor", page_id=page_id_to_create))
     except IOError as e:
-        flash(f"Error creating page '{page_id}': {e}", "danger")
+        flash(f"Error creating page '{page_id_to_create}': {e}", "danger")
         return redirect(url_for("admin_panel"))
 
 
@@ -281,8 +303,9 @@ def editor(page_id):
     """Serves the editor page for a given page_id."""
     file_path = os.path.join(DATA_DIR, f"{page_id}.md")
 
-    # Basic validation and existence check
-    if not os.path.exists(file_path) or not (len(page_id) == 4 and page_id.isalnum()):
+    # Primary validation: does the page file exist?
+    # The creation logic in admin_create_page ensures valid ID formats.
+    if not os.path.exists(file_path):
         return render_template("404.html"), 404
 
     # Check page status for non-admins
