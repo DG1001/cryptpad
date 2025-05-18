@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Encrypted Text Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+          theme: {
+            extend: {
+              fontFamily: {
+                sans: ['Inter', 'sans-serif'],
+              },
+            }
+          }
+        }
+    </script>
+</head>
+<body class="text-gray-800 font-sans bg-gray-100 min-h-screen">
+    <nav class="bg-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <a href="{{ url_for('admin_panel') }}" class="text-xl font-semibold text-gray-900">Admin Panel</a>
+                </div>
+                <div>
+                    <form action="{{ url_for('admin_logout') }}" method="POST" class="inline">
+                        <button type="submit" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Logout</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="py-10">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                <div class="mb-6">
+                {% for category, message in messages %}
+                  <div class="px-4 py-3 rounded-md 
+                              {% if category == 'danger' %}bg-red-100 text-red-700
+                              {% elif category == 'success' %}bg-green-100 text-green-700
+                              {% else %}bg-blue-100 text-blue-700{% endif %}" role="alert">
+                    {{ message }}
+                  </div>
+                {% endfor %}
+                </div>
+              {% endif %}
+            {% endwith %}
+
+            <div class="bg-white p-6 sm:p-8 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-semibold text-gray-900 mb-6">Manage Pages</h2>
+                
+                <div class="mb-6">
+                    <form action="{{ url_for('admin_create_page') }}" method="POST">
+                        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 ease-in-out">
+                            Create New Page
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Page listing will go here in the next step -->
+                <div class="mt-8">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">Existing Pages</h3>
+                    <p class="text-gray-600">Page listing, delete, backup, and download functionalities will be added here.</p>
+                    <!-- Placeholder for page list -->
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
