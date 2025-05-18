@@ -97,6 +97,39 @@ def delete_page(page_id):
         flash(f"Page '{page_id}' not found.", "warning")
     return redirect(url_for("admin_panel"))
 
+@app.route("/admin/backup_page/<page_id>", methods=["POST"])
+@login_required
+def backup_page(page_id):
+    """Creates a timestamped backup of a page."""
+    source_file_path = os.path.join(DATA_DIR, f"{page_id}.md")
+    
+    if not os.path.exists(source_file_path):
+        flash(f"Page '{page_id}' not found. Cannot create backup.", "warning")
+        return redirect(url_for("admin_panel"))
+
+    # Ensure backup directory for the page exists (e.g. backup/eppa/)
+    # This helps organize backups per page.
+    page_specific_backup_dir = os.path.join(BACKUP_DIR, page_id)
+    if not os.path.exists(page_specific_backup_dir):
+        try:
+            os.makedirs(page_specific_backup_dir)
+        except OSError as e:
+            flash(f"Error creating backup directory for page '{page_id}': {e}", "danger")
+            return redirect(url_for("admin_panel"))
+        
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    # Backup filename will be like: pagename_timestamp.md, e.g., eppa_20230101120000.md
+    # Stored inside backup/pagename/
+    backup_filename = f"{page_id}_{timestamp}.md" 
+    backup_file_path = os.path.join(page_specific_backup_dir, backup_filename)
+    
+    try:
+        shutil.copy2(source_file_path, backup_file_path) # copy2 preserves metadata
+        flash(f"Backup for page '{page_id}' created successfully: {backup_filename}", "success")
+    except Exception as e:
+        flash(f"Error creating backup for page '{page_id}': {e}", "danger")
+        
+    return redirect(url_for("admin_panel"))
 
 @app.route("/admin/create_page", methods=["POST"])
 @login_required
