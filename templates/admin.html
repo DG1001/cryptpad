@@ -61,11 +61,38 @@
                     </form>
                 </div>
 
-                <!-- Page listing will go here in the next step -->
                 <div class="mt-8">
                     <h3 class="text-xl font-semibold text-gray-800 mb-4">Existing Pages</h3>
-                    <p class="text-gray-600">Page listing, delete, backup, and download functionalities will be added here.</p>
-                    <!-- Placeholder for page list -->
+                    {% if pages %}
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white border border-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Page ID</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                {% for page in pages %}
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                        <a href="{{ url_for('editor', page_id=page.id) }}" class="text-blue-600 hover:text-blue-800">{{ page.name }}</a>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <a href="{{ url_for('editor', page_id=page.id) }}" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
+                                        <form action="{{ url_for('delete_page', page_id=page.id) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to delete page {{ page.id }}? This action cannot be undone, but backups will be kept.');">
+                                            <button type="submit" class="text-red-600 hover:text-red-900">Delete</button>
+                                        </form>
+                                        <!-- Backup and Download buttons will go here -->
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-gray-600">No pages found. Create one above!</p>
+                    {% endif %}
                 </div>
             </div>
         </div>

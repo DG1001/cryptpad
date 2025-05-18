@@ -4,8 +4,11 @@ import string
 import json
 import logging
 import secrets
+import shutil # For backup, not used yet, but good to have for next steps
+from datetime import datetime # For backup naming
 from functools import wraps
-from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, send_file
+# send_file will be used for download
 
 app = Flask(__name__)
 DATA_DIR = "data"
@@ -71,9 +74,29 @@ def admin_logout():
 @app.route("/admin")
 @login_required
 def admin_panel():
-    """Serves the admin dashboard page."""
-    # This will be expanded later to list pages
-    return render_template("admin.html")
+    """Serves the admin dashboard page, listing existing pages."""
+    pages = []
+    for filename in os.listdir(DATA_DIR):
+        if filename.endswith(".md"):
+            page_id = filename[:-3]
+            pages.append({"id": page_id, "name": page_id}) # Simple name for now
+    return render_template("admin.html", pages=pages)
+
+@app.route("/admin/delete_page/<page_id>", methods=["POST"])
+@login_required
+def delete_page(page_id):
+    """Deletes a page (but not its backups)."""
+    file_path = os.path.join(DATA_DIR, f"{page_id}.md")
+    if os.path.exists(file_path):
+        try:
+            os.remove(file_path)
+            flash(f"Page '{page_id}' deleted successfully.", "success")
+        except OSError as e:
+            flash(f"Error deleting page '{page_id}': {e}", "danger")
+    else:
+        flash(f"Page '{page_id}' not found.", "warning")
+    return redirect(url_for("admin_panel"))
+
 
 @app.route("/admin/create_page", methods=["POST"])
 @login_required
