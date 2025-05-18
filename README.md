@@ -15,7 +15,7 @@ This is a simple web-based text editor that allows users to create pages, write 
 - Page content is saved on the server in the `data/` directory.
 - **Admin Panel:**
     - Secure login using an environment variable `ADMIN_PASSWORD`.
-    - Create new pages, with an option to specify a custom page ID (3-20 chars, lowercase alphanumeric, underscore) or use a randomly generated one.
+    - Create new pages, with an option to specify a custom page ID (3-20 chars, lowercase alphanumeric, underscore; certain system names are reserved) or use a randomly generated one.
     - List existing pages with their last backup timestamps.
     - Display the first line of each page as a title for easier identification.
     - Enable/disable pages (restricts access for non-admin users).
