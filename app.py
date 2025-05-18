@@ -85,6 +85,10 @@ def is_valid_custom_page_id(page_id):
         return False
     return True
 
+RESERVED_ROUTES = ["admin", "static", "admin_login", "admin_logout", "admin_panel", 
+                   "delete_page", "backup_page", "toggle_status", "download_page", 
+                   "admin_create_page", "save", "load"] # Add any other top-level or critical route segments
+
 @app.route("/")
 def index():
     """Serves the home page."""
@@ -274,6 +278,9 @@ def admin_create_page():
     if custom_page_id:
         if not is_valid_custom_page_id(custom_page_id):
             flash("Invalid custom Page ID. Must be 3-20 characters, lowercase letters, numbers, or underscores.", "danger")
+            return redirect(url_for("admin_panel"))
+        if custom_page_id in RESERVED_ROUTES:
+            flash(f"Page ID '{custom_page_id}' is a reserved name and cannot be used.", "danger")
             return redirect(url_for("admin_panel"))
         if os.path.exists(os.path.join(DATA_DIR, f"{custom_page_id}.md")):
             flash(f"Page ID '{custom_page_id}' is already taken. Please choose another.", "danger")
