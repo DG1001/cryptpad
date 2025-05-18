@@ -81,7 +81,22 @@ def admin_panel():
     for filename in os.listdir(DATA_DIR):
         if filename.endswith(".md"):
             page_id = filename[:-3]
-            page_data = {"id": page_id, "name": page_id}
+            page_file_path = os.path.join(DATA_DIR, filename)
+            first_line = "[Empty Page]" # Default title
+            try:
+                with open(page_file_path, "r", encoding="utf-8") as f:
+                    first_line_read = f.readline().strip()
+                    if first_line_read:
+                        first_line = first_line_read
+                    # If file is not empty but first line is blank, it remains "[Empty Page]" or we can set another placeholder
+                    elif os.path.getsize(page_file_path) > 0 and not first_line_read:
+                        first_line = "[Untitled - First line blank]"
+
+            except Exception as e:
+                logging.error(f"Could not read first line for {page_id}: {e}")
+                first_line = "[Error reading title]"
+
+            page_data = {"id": page_id, "name": page_id, "title": first_line}
             
             # Get backup timestamps
             page_specific_backup_dir = os.path.join(BACKUP_DIR, page_id)
