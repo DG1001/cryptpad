@@ -81,7 +81,25 @@ def admin_panel():
     for filename in os.listdir(DATA_DIR):
         if filename.endswith(".md"):
             page_id = filename[:-3]
-            pages.append({"id": page_id, "name": page_id}) # Simple name for now
+            page_data = {"id": page_id, "name": page_id}
+            
+            # Get backup timestamps
+            page_specific_backup_dir = os.path.join(BACKUP_DIR, page_id)
+            backup_timestamps = []
+            if os.path.exists(page_specific_backup_dir):
+                for backup_file in sorted(os.listdir(page_specific_backup_dir), reverse=True): # Sort to get latest first
+                    if backup_file.startswith(f"{page_id}_") and backup_file.endswith(".md"):
+                        try:
+                            # Extract timestamp string: pageid_YYYYMMDDHHMMSS.md
+                            timestamp_str = backup_file[len(page_id)+1:-3]
+                            dt_obj = datetime.strptime(timestamp_str, "%Y%m%d%H%M%S")
+                            backup_timestamps.append(dt_obj.strftime("%Y-%m-%d %H:%M:%S"))
+                        except ValueError:
+                            # Handle cases where filename format might be unexpected
+                            logging.warning(f"Could not parse timestamp from backup file: {backup_file}")
+            page_data["backups"] = backup_timestamps # List of formatted timestamps
+            pages.append(page_data)
+            
     return render_template("admin.html", pages=pages)
 
 @app.route("/admin/delete_page/<page_id>", methods=["POST"])

@@ -69,16 +69,31 @@
                             <thead class="bg-gray-50">
                                 <tr>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Page ID</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Backup(s)</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200">
                                 {% for page in pages %}
                                 <tr>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 align-top">
                                         <a href="{{ url_for('editor', page_id=page.id) }}" class="text-blue-600 hover:text-blue-800">{{ page.name }}</a>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 align-top">
+                                        {% if page.backups %}
+                                            <ul class="list-none p-0 m-0">
+                                            {% for backup_ts in page.backups[:3] %} {# Show up to 3 most recent backups #}
+                                                <li>{{ backup_ts }}</li>
+                                            {% endfor %}
+                                            {% if page.backups|length > 3 %}
+                                                <li class="text-xs italic">...and {{ page.backups|length - 3 }} more</li>
+                                            {% endif %}
+                                            </ul>
+                                        {% else %}
+                                            No backups
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium align-top">
                                         <a href="{{ url_for('editor', page_id=page.id) }}" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
                                         <form action="{{ url_for('delete_page', page_id=page.id) }}" method="POST" class="inline mr-3" onsubmit="return confirm('Are you sure you want to delete page {{ page.id }}? This action cannot be undone, but backups will be kept.');">
                                             <button type="submit" class="text-red-600 hover:text-red-900">Delete</button>
