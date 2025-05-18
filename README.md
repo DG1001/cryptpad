@@ -17,6 +17,8 @@ This is a simple web-based text editor that allows users to create pages, write 
     - Secure login using an environment variable `ADMIN_PASSWORD`.
     - Create new pages.
     - List existing pages with their last backup timestamps.
+    - Display the first line of each page as a title for easier identification.
+    - Enable/disable pages (restricts access for non-admin users).
     - Delete pages (keeps backups).
     - Backup pages (creates a timestamped copy in the `backup/` directory).
     - Download a zip archive of a page and all its backups.
@@ -52,7 +54,7 @@ This is a simple web-based text editor that allows users to create pages, write 
 
 5.  **Create necessary directories:**
     The application will automatically create `data/` and `backup/` directories on first run if they don't exist.
-    - `data/`: Stores the live content of the pages.
+    - `data/`: Stores the live content of the pages (`.md` files) and page status information (`page_status.json`).
     - `backup/`: Stores timestamped backups of pages.
     The `static/` and `templates/` directories should exist as part of the project structure.
 
@@ -72,6 +74,7 @@ This is a simple web-based text editor that allows users to create pages, write 
 
 -   **Backend:** A Flask application handles routing, creating new pages, saving/loading page content, and admin functionalities.
     - Page content is stored as plain text files (with `.md` extension) in the `data/` directory.
+    - Page statuses (enabled/disabled) are stored in `data/page_status.json`.
     - Backups are stored in the `backup/` directory, organized by page ID.
     - Admin access is protected by a password.
 -   **Frontend:**
