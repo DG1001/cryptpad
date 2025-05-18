@@ -83,10 +83,10 @@
                                         <form action="{{ url_for('delete_page', page_id=page.id) }}" method="POST" class="inline mr-3" onsubmit="return confirm('Are you sure you want to delete page {{ page.id }}? This action cannot be undone, but backups will be kept.');">
                                             <button type="submit" class="text-red-600 hover:text-red-900">Delete</button>
                                         </form>
-                                        <form action="{{ url_for('backup_page', page_id=page.id) }}" method="POST" class="inline">
+                                        <form action="{{ url_for('backup_page', page_id=page.id) }}" method="POST" class="inline mr-3">
                                             <button type="submit" class="text-green-600 hover:text-green-900">Backup</button>
                                         </form>
-                                        <!-- Download button will go here -->
+                                        <a href="{{ url_for('download_page', page_id=page.id) }}" class="text-purple-600 hover:text-purple-900">Download</a>
                                     </td>
                                 </tr>
                                 {% endfor %}

@@ -4,7 +4,9 @@ import string
 import json
 import logging
 import secrets
-import shutil # For backup, not used yet, but good to have for next steps
+import shutil
+import io # For in-memory zip file
+import zipfile # For creating zip archives
 from datetime import datetime # For backup naming
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, send_file
@@ -130,6 +132,40 @@ def backup_page(page_id):
         flash(f"Error creating backup for page '{page_id}': {e}", "danger")
         
     return redirect(url_for("admin_panel"))
+
+@app.route("/admin/download_page/<page_id>", methods=["GET"])
+@login_required
+def download_page(page_id):
+    """Packs the page and its backups into a zip file for download."""
+    page_file_path = os.path.join(DATA_DIR, f"{page_id}.md")
+    page_specific_backup_dir = os.path.join(BACKUP_DIR, page_id)
+
+    if not os.path.exists(page_file_path):
+        flash(f"Page '{page_id}' not found. Cannot download.", "warning")
+        return redirect(url_for("admin_panel"))
+
+    memory_file = io.BytesIO()
+    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+        # Add the main page file
+        zf.write(page_file_path, arcname=f"{page_id}.md")
+
+        # Add backups if the backup directory exists
+        if os.path.exists(page_specific_backup_dir):
+            for backup_file in os.listdir(page_specific_backup_dir):
+                if backup_file.endswith(".md"):
+                    full_backup_path = os.path.join(page_specific_backup_dir, backup_file)
+                    # Store backups in a 'backups' folder within the zip
+                    zf.write(full_backup_path, arcname=os.path.join("backups", backup_file))
+    
+    memory_file.seek(0)
+    zip_filename = f"{page_id}_archive.zip"
+    
+    return send_file(
+        memory_file,
+        as_attachment=True,
+        download_name=zip_filename,
+        mimetype='application/zip'
+    )
 
 @app.route("/admin/create_page", methods=["POST"])
 @login_required
