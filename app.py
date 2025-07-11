@@ -57,12 +57,45 @@ def save_page_statuses(statuses):
 def get_page_status(page_id):
     """Gets the status of a page, defaulting to 'enabled'."""
     statuses = load_page_statuses()
-    return statuses.get(page_id, "enabled")
+    page_data = statuses.get(page_id, {"status": "enabled", "security_mode": "prompt"})
+    # Handle legacy format (string status only)
+    if isinstance(page_data, str):
+        page_data = {"status": page_data, "security_mode": "prompt"}
+    return page_data.get("status", "enabled")
+
+def get_page_security_mode(page_id):
+    """Gets the security mode of a page, defaulting to 'prompt'."""
+    statuses = load_page_statuses()
+    page_data = statuses.get(page_id, {"status": "enabled", "security_mode": "prompt"})
+    # Handle legacy format (string status only)
+    if isinstance(page_data, str):
+        return "prompt"
+    current_mode = page_data.get("security_mode", "prompt")
+    # Migrate legacy session mode to prompt
+    if current_mode == "session":
+        return "prompt"
+    return current_mode
 
 def set_page_status(page_id, status):
     """Sets the status of a page."""
     statuses = load_page_statuses()
-    statuses[page_id] = status
+    page_data = statuses.get(page_id, {"status": "enabled", "security_mode": "prompt"})
+    # Handle legacy format (string status only)
+    if isinstance(page_data, str):
+        page_data = {"status": page_data, "security_mode": "prompt"}
+    page_data["status"] = status
+    statuses[page_id] = page_data
+    save_page_statuses(statuses)
+
+def set_page_security_mode(page_id, security_mode):
+    """Sets the security mode of a page."""
+    statuses = load_page_statuses()
+    page_data = statuses.get(page_id, {"status": "enabled", "security_mode": "prompt"})
+    # Handle legacy format (string status only)
+    if isinstance(page_data, str):
+        page_data = {"status": page_data, "security_mode": "prompt"}
+    page_data["security_mode"] = security_mode
+    statuses[page_id] = page_data
     save_page_statuses(statuses)
 
 def remove_page_status(page_id):
@@ -152,7 +185,8 @@ def admin_panel():
                 "id": page_id,
                 "name": page_id,
                 "title": first_line,
-                "status": get_page_status(page_id)
+                "status": get_page_status(page_id),
+                "security_mode": get_page_security_mode(page_id)
             }
             
             # Get backup timestamps
@@ -232,6 +266,17 @@ def toggle_page_status(page_id):
     new_status = "disabled" if current_status == "enabled" else "enabled"
     set_page_status(page_id, new_status)
     flash(f"Page '{page_id}' has been {new_status}.", "success")
+    return redirect(url_for("admin_panel"))
+
+@app.route("/admin/toggle_security_mode/<page_id>", methods=["POST"])
+@login_required
+def toggle_security_mode(page_id):
+    """Toggles the security mode of a page between local and prompt."""
+    current_mode = get_page_security_mode(page_id)
+    new_mode = "prompt" if current_mode == "local" else "local"
+    set_page_security_mode(page_id, new_mode)
+    mode_names = {"local": "Local Storage", "prompt": "No Key Storage"}
+    flash(f"Security mode for page '{page_id}' changed to {mode_names[new_mode]}.", "success")
     return redirect(url_for("admin_panel"))
 
 @app.route("/admin/download_page/<page_id>", methods=["GET"])
@@ -321,7 +366,8 @@ def editor(page_id):
         flash("This page is currently disabled and cannot be accessed.", "warning")
         return render_template("403.html", page_id=page_id), 403
         
-    return render_template("editor.html", page_id=page_id)
+    security_mode = get_page_security_mode(page_id)
+    return render_template("editor.html", page_id=page_id, security_mode=security_mode)
 
 @app.errorhandler(403)
 def forbidden_page(e):

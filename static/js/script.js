@@ -69,15 +69,77 @@ document.addEventListener('DOMContentLoaded', () => {
     let encryptedTextMap = {}; // Stores mapping from labelPlaceholder to ENC<data>
     let encryptedTextCounter = 0; // Used to generate unique label IDs
 
-    // Load encryption key from localStorage
-    if (encryptionKeyInput && localStorage.getItem(KEY_STORAGE_ID)) { // Added check for encryptionKeyInput
-        encryptionKeyInput.value = localStorage.getItem(KEY_STORAGE_ID);
+    // Security mode handling functions
+    function getStorageKey() {
+        return `${KEY_STORAGE_ID}_${currentPageId}`;
     }
 
-    // Save encryption key to localStorage on change
-    encryptionKeyInput.addEventListener('input', () => {
-        localStorage.setItem(KEY_STORAGE_ID, encryptionKeyInput.value);
-    });
+    function loadEncryptionKey() {
+        if (!encryptionKeyInput) return;
+        
+        if (securityMode === 'local') {
+            const storedKey = localStorage.getItem(getStorageKey());
+            if (storedKey) {
+                encryptionKeyInput.value = storedKey;
+            }
+        }
+        // For 'prompt' mode (no storage), we don't load any stored key
+        // Legacy 'session' mode is now treated as 'prompt'
+    }
+
+    function saveEncryptionKey(key) {
+        if (securityMode === 'local') {
+            localStorage.setItem(getStorageKey(), key);
+        }
+        // For 'prompt' mode (no storage), we don't save the key
+        // Legacy 'session' mode is now treated as 'prompt'
+    }
+
+    function getEncryptionKey() {
+        // Always use the input field value, regardless of security mode
+        // The difference between modes is only in storage behavior
+        return encryptionKeyInput ? encryptionKeyInput.value : '';
+    }
+
+    // Set up security mode indicator and behavior
+    function setupSecurityMode() {
+        const indicator = document.getElementById('securityModeIndicator');
+        if (indicator) {
+            // Handle legacy session mode by treating it as prompt
+            const currentMode = (securityMode === 'session') ? 'prompt' : securityMode;
+            
+            switch (currentMode) {
+                case 'local':
+                    indicator.textContent = 'Local Storage';
+                    indicator.className = 'text-xs px-2 py-1 rounded-full text-white bg-green-500';
+                    break;
+                case 'prompt':
+                default: // Default to no storage for security
+                    indicator.textContent = 'No Key Storage';
+                    indicator.className = 'text-xs px-2 py-1 rounded-full text-white bg-red-500';
+                    if (encryptionKeyInput) {
+                        encryptionKeyInput.placeholder = 'Enter key (not stored anywhere)';
+                        encryptionKeyInput.readonly = false;
+                        // Remove any disabled styling that might have been added
+                        encryptionKeyInput.className = encryptionKeyInput.className
+                            .replace(' cursor-not-allowed', '')
+                            .replace(' opacity-60', '');
+                    }
+                    break;
+            }
+        }
+    }
+
+    // Load encryption key based on security mode
+    loadEncryptionKey();
+    setupSecurityMode();
+
+    // Save encryption key on change (only for local storage mode)
+    if (encryptionKeyInput && securityMode === 'local') {
+        encryptionKeyInput.addEventListener('input', () => {
+            saveEncryptionKey(encryptionKeyInput.value);
+        });
+    }
 
     // Function to load page content
     async function loadPageContent() {
@@ -223,7 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const selectionStart = markdownTextArea.selectionStart;
             const selectionEnd = markdownTextArea.selectionEnd;
             const selectedText = markdownTextArea.value.substring(selectionStart, selectionEnd);
-            const currentKey = encryptionKeyInput.value;
+            const currentKey = getEncryptionKey();
 
             if (selectedText && currentKey) {
                 const encryptedPlaceholder = await encryptText(selectedText, currentKey);
@@ -299,7 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (decryptButton && markdownTextArea) {
         decryptButton.addEventListener('click', async () => {
-            const currentKey = encryptionKeyInput.value;
+            const currentKey = getEncryptionKey();
             if (!currentKey) {
                 showToast('Please enter an encryption key.', 'warning');
                 return;
@@ -357,7 +419,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (copyButton && markdownTextArea) {
         copyButton.addEventListener('click', async () => {
-            const currentKey = encryptionKeyInput.value;
+            const currentKey = getEncryptionKey();
             // Note: We don't alert for missing key here immediately, 
             // as copying selected text without decryption is still an option.
 
@@ -421,6 +483,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
             } else { // No text selected, try to copy label at cursor
+                const currentKey = getEncryptionKey();
                 if (!currentKey) {
                     showToast('Please enter an encryption key to copy decrypted content.', 'warning');
                     return;
