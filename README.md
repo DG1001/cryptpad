@@ -1,4 +1,12 @@
-# CryptPad - Simple Encrypted Text Editor
+<div align="center">
+  <img src="static/images/cryptpad_logo.png" alt="CryptPad Logo" width="200"/>
+  
+  # CryptPad - Simple Encrypted Text Editor
+  
+  **Secure, flexible text editing with client-side encryption**
+</div>
+
+---
 
 This is a simple web-based text editor that allows users to create pages, write text, and encrypt/decrypt portions of the text using a symmetric key. The application offers flexible security modes for key storage ranging from convenient local storage to high-security no-storage options.
 
