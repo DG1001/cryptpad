@@ -2,3 +2,5 @@
 .aider*
 data/
 backup/
+__pycache__/
+CLAUDE.md

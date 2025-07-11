@@ -6,6 +6,64 @@ document.addEventListener('DOMContentLoaded', () => {
     const copyButton = document.getElementById('copyButton'); // New button
     const saveButton = document.getElementById('saveButton');
 
+    // Toast notification function
+    function showToast(message, type = 'info') {
+        const toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) return;
+
+        const toast = document.createElement('div');
+        toast.className = `px-6 py-4 rounded-lg shadow-lg text-white max-w-sm transform transition-all duration-300 ease-in-out`;
+        
+        // Set background color based on type
+        switch (type) {
+            case 'success':
+                toast.className += ' bg-green-500';
+                break;
+            case 'error':
+                toast.className += ' bg-red-500';
+                break;
+            case 'warning':
+                toast.className += ' bg-yellow-500';
+                break;
+            default:
+                toast.className += ' bg-blue-500';
+        }
+
+        toast.innerHTML = `
+            <div class="flex items-center justify-between">
+                <span class="text-sm font-medium">${message}</span>
+                <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        `;
+
+        // Initially hide the toast for animation
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        
+        toastContainer.appendChild(toast);
+
+        // Animate in
+        setTimeout(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateX(0)';
+        }, 10);
+
+        // Auto-remove after 4 seconds
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.remove();
+                }
+            }, 300);
+        }, 4000);
+    }
+
     const KEY_STORAGE_ID = 'encryptionKey';
 
     let encryptedTextMap = {}; // Stores mapping from labelPlaceholder to ENC<data>
@@ -39,11 +97,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else {
                 console.error('Failed to load page:', data.message);
-                alert('Error loading page content.');
+                showToast('Error loading page content.', 'error');
             }
         } catch (error) {
             console.error('Error loading page content:', error);
-            alert('Error loading page content.');
+            showToast('Error loading page content.', 'error');
         }
     }
 
@@ -67,13 +125,13 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const data = await response.json();
             if (data.success) {
-                alert('Page saved successfully!');
+                showToast('Page saved successfully!', 'success');
             } else {
-                alert(`Failed to save page: ${data.message}`);
+                showToast(`Failed to save page: ${data.message}`, 'error');
             }
         } catch (error) {
             console.error('Error saving page content:', error);
-            alert('Error saving page content.');
+            showToast('Error saving page content.', 'error');
         }
     }
     
@@ -84,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Encryption logic: returns a label placeholder, stores mapping
     async function encryptText(text, key) {
         if (!key) {
-            alert("Please enter an encryption key.");
+            showToast('Please enter an encryption key.', 'warning');
             return null;
         }
         try {
@@ -112,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (e) {
             console.error("Encryption failed:", e);
-            alert("Encryption failed. Check console for details.");
+            showToast('Encryption failed. Check console for details.', 'error');
             return null;
         }
     }
@@ -177,9 +235,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     // the event listeners will pick up the new labels.
                 }
             } else if (!selectedText) {
-                alert("Please select text to encrypt.");
+                showToast('Please select text to encrypt.', 'warning');
             } else {
-                alert("Please enter an encryption key.");
+                showToast('Please enter an encryption key.', 'warning');
             }
         });
     }
@@ -243,7 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
         decryptButton.addEventListener('click', async () => {
             const currentKey = encryptionKeyInput.value;
             if (!currentKey) {
-                alert("Please enter an encryption key.");
+                showToast('Please enter an encryption key.', 'warning');
                 return;
             }
 
@@ -268,7 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (labelToDecrypt) {
                 const encryptedDataString = encryptedTextMap[labelToDecrypt];
                 if (!encryptedDataString) {
-                    alert("Could not find encrypted data for this label. It might have been already decrypted or an error occurred.");
+                    showToast('Could not find encrypted data for this label. It might have been already decrypted or an error occurred.', 'error');
                     return;
                 }
 
@@ -286,12 +344,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Adjust cursor position to be after the inserted decrypted text
                     markdownTextArea.selectionStart = markdownTextArea.selectionEnd = labelStartIndex + decryptedText.length;
                     markdownTextArea.focus(); // Refocus on textarea
-                    alert("Text decrypted successfully.");
+                    showToast('Text decrypted successfully.', 'success');
                 } else {
-                    alert("Failed to decrypt. Key might be incorrect or data corrupted.");
+                    showToast('Failed to decrypt. Key might be incorrect or data corrupted.', 'error');
                 }
             } else {
-                alert("Cursor is not inside a recognized encrypted label.");
+                showToast('Cursor is not inside a recognized encrypted label.', 'warning');
             }
         });
     }
@@ -349,22 +407,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     await navigator.clipboard.writeText(resultText);
                     if (decryptionOccurred) {
-                        alert("Selected text (with decrypted content) copied to clipboard!");
+                        showToast('Selected text (with decrypted content) copied to clipboard!', 'success');
                     } else if (decryptionAttemptedWithKey) {
-                        alert("Selected text copied. Some parts could not be decrypted (check key or data).");
+                        showToast('Selected text copied. Some parts could not be decrypted (check key or data).', 'warning');
                     } else if (selectedText.match(/\[LOCKED_CONTENT_#\d+\]/g) && !currentKey) {
-                         alert("Selected text copied. Provide an encryption key to decrypt locked content.");
+                         showToast('Selected text copied. Provide an encryption key to decrypt locked content.', 'warning');
                     } else {
-                        alert("Selected text copied to clipboard!");
+                        showToast('Selected text copied to clipboard!', 'success');
                     }
                 } catch (err) {
                     console.error('Failed to copy text: ', err);
-                    alert('Failed to copy selected text to clipboard.');
+                    showToast('Failed to copy selected text to clipboard.', 'error');
                 }
 
             } else { // No text selected, try to copy label at cursor
                 if (!currentKey) {
-                    alert("Please enter an encryption key to copy decrypted content.");
+                    showToast('Please enter an encryption key to copy decrypted content.', 'warning');
                     return;
                 }
                 const cursorPos = selectionStart;
@@ -383,7 +441,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (labelToCopy) {
                     const encryptedDataString = encryptedTextMap[labelToCopy];
                     if (!encryptedDataString) {
-                        alert("Could not find encrypted data for this label.");
+                        showToast('Could not find encrypted data for this label.', 'error');
                         return;
                     }
 
@@ -392,16 +450,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (decryptedText !== null) {
                         try {
                             await navigator.clipboard.writeText(decryptedText);
-                            alert("Decrypted text copied to clipboard!");
+                            showToast('Decrypted text copied to clipboard!', 'success');
                         } catch (err) {
                             console.error('Failed to copy text: ', err);
-                            alert('Failed to copy decrypted text to clipboard.');
+                            showToast('Failed to copy decrypted text to clipboard.', 'error');
                         }
                     } else {
-                        alert("Failed to decrypt. Key might be incorrect or data corrupted.");
+                        showToast('Failed to decrypt. Key might be incorrect or data corrupted.', 'error');
                     }
                 } else {
-                    alert("Cursor is not inside a recognized encrypted label. Cannot copy.");
+                    showToast('Cursor is not inside a recognized encrypted label. Cannot copy.', 'warning');
                 }
             }
         });
