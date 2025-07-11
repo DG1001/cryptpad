@@ -1,0 +1,4 @@
+# Requirements for the backup decryption tool
+# Install with: pip install -r requirements-decrypt.txt
+
+cryptography>=3.0.0

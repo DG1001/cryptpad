@@ -59,6 +59,9 @@ Each page can be configured with one of two security levels:
 3.  **Install dependencies:**
     ```bash
     pip install -r requirements.txt
+    
+    # Optional: Install backup decryption tool dependencies
+    pip install -r requirements-decrypt.txt
     ```
 
 4.  **Environment Variables:**
@@ -126,6 +129,53 @@ Each page can be configured with one of two security levels:
 -   **Production Setup**: Use a production-grade WSGI server like Gunicorn or uWSGI
 -   **Environment Variables**: Properly secure your `ADMIN_PASSWORD` and `FLASK_SECRET_KEY`
 -   **File Permissions**: Ensure appropriate access controls on `data/` and `backup/` directories
+
+## Backup Decryption Tool
+
+For emergency access to encrypted data outside the web application, a standalone Python tool is provided:
+
+### Installation
+```bash
+# Install decryption tool dependencies
+pip install -r requirements-decrypt.txt
+```
+
+### Usage
+```bash
+# Decrypt a backup file to stdout
+python decrypt_backup.py backup/page_id/backup_file.md --key "your_encryption_key"
+
+# Decrypt and save to file
+python decrypt_backup.py backup/page_id/backup_file.md --key "your_encryption_key" --output decrypted.txt
+
+# Show help
+python decrypt_backup.py --help
+```
+
+### Features
+- ✅ **Offline Decryption**: Works without the web application
+- ✅ **Batch Processing**: Process multiple backup files
+- ✅ **Same Algorithm**: Uses identical AES-GCM decryption as web app
+- ✅ **Error Handling**: Clear messages for wrong keys or corrupted data
+- ✅ **Flexible Output**: Display on screen or save to file
+
+**Note**: You need the same encryption key that was used to encrypt the content originally.
+
+### Example
+```bash
+$ python decrypt_backup.py backup/qkjf/qkjf_20250518141635.md --key "mypassword"
+Processing: backup/qkjf/qkjf_20250518141635.md
+Found 2 encrypted sections in backup/qkjf/qkjf_20250518141635.md
+  ✓ Decrypted section 1
+  ✓ Decrypted section 2
+Successfully decrypted 2/2 sections
+
+==================================================
+DECRYPTED CONTENT:
+==================================================
+stripe public: pk_live_abc123...
+stripe private: sk_live_xyz789...
+```
 
 ## Technical Notes
 
